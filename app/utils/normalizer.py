@@ -160,8 +160,9 @@ class ValueNormalizer:
                         break
                 num_part = num_part[len(prefix):]
 
-                return f"{prefix}{num_part}.{parts[1]}"
-            return result
+                res = f"{prefix}{num_part}.{parts[1]}"
+                return re.sub(r'([<>])\s*', r'\1 ', res)
+            return re.sub(r'([<>])\s*', r'\1 ', result)
 
         # If it looks like a number with comparison operators
         if cleaned.startswith(("<", ">")):
