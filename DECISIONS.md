@@ -90,3 +90,41 @@ We implemented a dedicated WebSocket endpoint (`/api/v1/speech/stream`) for live
 - **Direct Pipeline Routing (Skipping File Recognition)**: Per Section 5 of the design specification, live microphone input bypasses file format validation and file type routing rules, sending raw PCM frames directly to the speech provider's stream processor.
 - **Protocol Efficiency & Session Control**: A single WebSocket connection handles session initialization (`{"type": "config", "sample_rate": 16000, "language": "bn"}`), continuous audio transmission without HTTP header overhead, and stream lifecycle management (`{"type": "stop"}`).
 
+---
+
+## 7. Value, Unit, and Date Normalization Strategy
+
+### Context
+Section 7, Stage 9 of the Design Specification requires converting extracted raw OCR strings into clean, standardized clinical formats without hallucinating or guessing uncertain values.
+
+### Decision
+We implemented a dedicated normalization module (`ValueNormalizer` in `app/utils/normalizer.py`) that executes deterministic transformations across four domains:
+
+1. **Unit Standardization (`normalize_unit`)**:
+   - Maps heterogeneous OCR unit representations to standardized SI / clinical unit strings using a dictionary lookup (`_UNIT_MAPPINGS`).
+   - Examples:
+     - `mg/dl`, `mg/DL`, `MG/DL` $\rightarrow$ `mg/dL`
+     - `gm/dl`, `g/dl`, `g%` $\rightarrow$ `g/dL`
+     - `u/l`, `U/l` $\rightarrow$ `U/L`
+     - `cells/cumm`, `/cumm`, `cells/mm3` $\rightarrow$ `cells/µL`
+     - `fl` $\rightarrow$ `fL`
+     - `mm/1st hr` $\rightarrow$ `mm/hr`
+   - Handles whitespace and case variations while leaving unknown custom units untouched to prevent data corruption.
+
+2. **Numeric Cleaning (`normalize_numeric`)**:
+   - Corrects common OCR confusion artifacts (e.g. letter `O` mistakenly read as digit `0`, lowercase `l` as `1`).
+   - Strips thousands separators (commas) and extra internal spaces.
+   - Cleans leading zeros while preserving decimal numbers (`0.9`), signs (`-`, `+`), and comparison operators (`< 200`, `> 40`).
+
+3. **Date Normalization (`normalize_date`)**:
+   - Converts diverse report date formats (`DD-MM-YYYY`, `YYYY-MM-DD`, `DD.MM.YYYY`, `15 Jul 2024`, `Jul 15, 2024`) into a uniform ISO-like `DD/MM/YYYY` format.
+
+4. **Reference Range Parsing & Automatic Flagging (`determine_flag`)**:
+   - Standardizes range strings (handling dashes, `to`, `<`, `>`).
+   - Compares normalized numeric test values against reference ranges to infer abnormality flags (`high`, `low`, `normal`).
+
+### Rationale
+- **Clinical Safety & Determinism**: Rule-based deterministic parsing prevents generative hallucination of clinical values.
+- **Traceability**: If a field cannot be safely normalized, the raw OCR text is preserved in `raw_line` while leaving the field un-guessed as required by Stage 9 guidelines.
+
+
