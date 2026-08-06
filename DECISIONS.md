@@ -74,3 +74,19 @@ We created `LabDatasetValidator` in `app/models/lab_dataset.py` containing a com
   2. Metadata + No Tests -> Valid Report with Empty Results.
   3. No Metadata + No Known Features -> Invalid Laboratory Report.
 - **Extensible**: Allows loading user-provided CSV/JSON lab reference datasets dynamically at runtime.
+
+---
+
+## 6. Real-Time Streaming via WebSocket for Live Microphone Transcription
+
+### Context
+Section 2 and Section 5 of the Design Specification require support for both batch audio file uploads and real-time live microphone transcription.
+
+### Decision
+We implemented a dedicated WebSocket endpoint (`/api/v1/speech/stream`) for live microphone input alongside the standard REST POST upload endpoint (`/api/v1/speech/transcribe`).
+
+### Rationale
+- **Low Latency & Continuous Streaming**: HTTP POST is request-response based, requiring the client to complete recording, encode a full audio file, and wait for a single response. WebSocket provides a persistent full-duplex TCP connection, allowing continuous binary audio chunks (PCM bytes) to stream from the microphone to the server with near real-time incremental feedback.
+- **Direct Pipeline Routing (Skipping File Recognition)**: Per Section 5 of the design specification, live microphone input bypasses file format validation and file type routing rules, sending raw PCM frames directly to the speech provider's stream processor.
+- **Protocol Efficiency & Session Control**: A single WebSocket connection handles session initialization (`{"type": "config", "sample_rate": 16000, "language": "bn"}`), continuous audio transmission without HTTP header overhead, and stream lifecycle management (`{"type": "stop"}`).
+
