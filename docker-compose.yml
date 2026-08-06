@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: speech_doc_extractor_api
+    ports:
+      - "8000:8000"
+    environment:
+      - SPEECH_PROVIDER=mock
+      - OCR_PROVIDER=mock
+      - LOG_LEVEL=INFO
+      - MAX_FILE_SIZE_MB=25
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
