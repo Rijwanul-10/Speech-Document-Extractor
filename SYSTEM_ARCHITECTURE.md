@@ -19,45 +19,51 @@ The design follows the assignment requirements while keeping the system simple, 
 # 1. Overall Architecture
 
 ```text
-                           User / Client
-                                 │
-                    REST API / Swagger UI
-                                 │
-                          FastAPI (API Layer)
-                                 │
-                    Request Validation Layer
-                                 │
-                    File Recognition Router
-                   (Skipped for Live Speech)
-                                 │
-         ┌───────────────────────┴────────────────────────┐
-         │                                                │
- Speech Transcription Pipeline              Medical Report Pipeline
-         │                                                │
-         ▼                                                ▼
-  Speech Service                            Document Service
-         │                                                │
-         ▼                                                ▼
-  Speech Adapter Interface                  OCR Adapter Interface
-         │                                                │
-   ┌─────┴────────────┐                      ┌─────────────┴────────────┐
-   │                  │                      │                          │
-Real Provider     Mock Provider        Real OCR                  Mock OCR
-         │                                                │
-         ▼                                                ▼
- Structured Transcript                    OCR Text + Image Processing
-                                                      │
-                                                      ▼
-                                        Report Classification
-                                                      │
-                                                      ▼
-                                      Metadata & Result Extraction
-                                                      │
-                                                      ▼
-                                          Value Normalization
-                                                      │
-                                                      ▼
-                                           Structured JSON Response
+       ┌────────────────────────────────────────────────────────┐
+       │           Automated API Test Suite (pytest)            │
+       │    (Integration Tests, API Contracts, WebSocket Tests) │
+       └───────────────────────────┬────────────────────────────┘
+                                   │
+                                   ▼
+                             User / Client
+                                   │
+                      REST API / Swagger UI / WebSocket
+                                   │
+                            FastAPI (API Layer)
+                                   │
+                      Request Validation Layer
+                                   │
+                      File Recognition Router
+                     (Skipped for Live Speech)
+                                   │
+          ┌────────────────────────┴────────────────────────┐
+          │                                                 │
+  Speech Transcription Pipeline               Medical Report Pipeline
+          │                                                 │
+          ▼                                                 ▼
+   Speech Service                             Document Service
+          │                                                 │
+          ▼                                                 ▼
+   Speech Adapter Interface                   OCR Adapter Interface
+          │                                                 │
+    ┌─────┴────────────┐                       ┌────────────┴────────────┐
+    │                  │                       │                         │
+Real Provider     Mock Provider         Real OCR                 Mock OCR
+          │                                                 │
+          ▼                                                 ▼
+  Structured Transcript                     OCR Text + Image Processing
+                                                        │
+                                                        ▼
+                                          Report Classification
+                                                        │
+                                                        ▼
+                                        Metadata & Result Extraction
+                                                        │
+                                                        ▼
+                                            Value Normalization
+                                                        │
+                                                        ▼
+                                             Structured JSON Response
 ```
 
 ---
@@ -65,9 +71,17 @@ Real Provider     Mock Provider        Real OCR                  Mock OCR
 # 2. Layered Architecture
 
 ```
+tests/
+│
+├── API Integration Tests (Speech, Document & WebSocket)
+├── Unit Tests (Validation, Normalization, Classification)
+└── Fixtures & Test Data Generators
+
+↓
+
 api/
 │
-├── HTTP Routes
+├── HTTP Routes (REST + WebSocket)
 ├── Request Models
 ├── Response Models
 └── Validation
@@ -349,18 +363,20 @@ Default Docker configuration uses mock providers.
 
 # 11. Testing Strategy
 
-Unit Tests
-- Validation
-- Normalization
-- Classification
+The architecture includes a dedicated **Automated API Testing Layer** (`tests/`) using `pytest`, `httpx`, and `fastapi.testclient.TestClient` (the Python equivalent of Java JUnit / REST Assured).
 
-Integration Tests
-- Speech endpoint
-- OCR endpoint
+### 1. Unit Testing Layer
+- **File Validation**: Empty files, format restrictions, magic-byte corruption checks, size limits (>25 MB).
+- **Value & Unit Normalization**: Unit mappings (`mg/dl` $\rightarrow$ `mg/dL`, `cells/cumm` $\rightarrow$ `cells/µL`), numeric cleaning, date standardization, range comparison.
+- **Report Classification**: Lab keyword matching, non-lab prescription negative scoring, structural pattern validation.
 
-Mock Tests
-- Speech mock adapter
-- OCR mock adapter
+### 2. API Integration & Contract Testing Layer
+- **Speech REST Endpoint (`POST /api/v1/speech/transcribe`)**: Upload validation, transcript responses, language detection, error status code formatting (`400`, `500`).
+- **Speech WebSocket Stream (`WebSocket /api/v1/speech/stream`)**: Handshake, JSON config protocol (`sample_rate`, `language`), continuous binary audio chunk transmission, stream termination.
+- **Document REST Endpoint (`POST /api/v1/document/extract`)**: PNG/JPEG image extraction, multi-page PDF processing, raw line preservation (`raw_line`), un-guessed value handling.
+
+### 3. Mock Provider Integration Layer
+- Automatic switching to `MockSpeechAdapter` and `MockOCRAdapter` for ultra-fast, reproducible offline testing without neural network overhead or cloud API keys.
 
 ---
 

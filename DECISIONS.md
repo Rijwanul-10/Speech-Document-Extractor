@@ -127,4 +127,19 @@ We implemented a dedicated normalization module (`ValueNormalizer` in `app/utils
 - **Clinical Safety & Determinism**: Rule-based deterministic parsing prevents generative hallucination of clinical values.
 - **Traceability**: If a field cannot be safely normalized, the raw OCR text is preserved in `raw_line` while leaving the field un-guessed as required by Stage 9 guidelines.
 
+---
+
+## 8. Automated API Testing Layer (`pytest` & `TestClient`)
+
+### Context
+Ensuring high software engineering quality, API contract compliance, and regression safety across REST endpoints, WebSocket streams, and core business utilities.
+
+### Decision
+We introduced a top-level **Automated API Testing Layer** (`tests/`) built with `pytest`, `httpx`, and `fastapi.testclient.TestClient` (the Python ecosystem standard equivalent to Java `JUnit` / `REST Assured`).
+
+### Rationale
+- **End-to-End API Contract Verification**: Tests validate complete HTTP request handling, proper response status codes (`200`, `400`, `500`), Pydantic schema validation, and structured error responses.
+- **WebSocket Streaming Protocol Validation**: Dedicated tests verify real-time WebSocket connection handshakes, text config exchange (`sample_rate`, `language`), continuous binary audio chunk transmission, and clean session closure (`stop`).
+- **Fast, Isolated CI/CD Execution**: By combining the test suite with `MockSpeechAdapter` and `MockOCRAdapter`, the entire test suite executes in under 5 seconds without GPU requirements or paid external API dependencies.
+
 

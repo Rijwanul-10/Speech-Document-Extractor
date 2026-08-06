@@ -12,7 +12,8 @@ An production-inspired AI backend service built with **FastAPI**, exposing two i
 
 ## 🌟 Architecture & Highlights
 
-- **Clean Architecture & 3-Layer Separation**: Decoupled `api → services → adapters`. API endpoints validate requests and handle HTTP/WebSocket concerns; Service layer orchestrates business logic; Adapter layer manages external AI engine abstractions.
+- **Clean Layered Architecture (`tests → api → services → adapters`)**: Decoupled 3-layer runtime design topped by an Automated API Testing Layer (`pytest` / `TestClient`). API endpoints handle HTTP/WebSocket routing; Service layer orchestrates business logic; Adapter layer manages AI engine abstractions.
+- **Automated API Testing Layer**: Complete 3-tier testing suite (`tests/`) covering unit validation, HTTP REST API contracts, WebSocket streaming protocols, and edge cases.
 - **Provider Independence & Adapter Pattern**: Configurable switching between real providers (`Faster-Whisper`, `PaddleOCR`) and lightweight offline `Mock` providers without changing a single line of application code.
 - **Reviewer-Friendly Mock Mode**: Default Docker environment runs in mock mode requiring zero external API keys or large model downloads.
 - **Multi-Stage Medical Report Pipeline**: Image enhancement (denoising, deskewing, CLAHE contrast, sharpening, adaptive thresholding), OCR, raw line preservation (`raw_line`), document classification, metadata & tabular result extraction, domain knowledge dataset validation, and value/unit/date normalization.
