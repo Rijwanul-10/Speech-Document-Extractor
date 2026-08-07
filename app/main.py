@@ -9,9 +9,12 @@ import logging
 import sys
 from contextlib import asynccontextmanager
 
+from pathlib import Path
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api.document_routes import router as document_router
 from app.api.health_routes import router as health_router
@@ -86,10 +89,17 @@ def create_app() -> FastAPI:
     app.include_router(speech_router)
     app.include_router(document_router)
 
-    # Root route redirect to docs
+    # Mount static files directory
+    frontend_dir = Path(__file__).resolve().parent.parent / "frontend"
+    if frontend_dir.exists():
+        app.mount("/static", StaticFiles(directory=str(frontend_dir)), name="static")
+
+    # Root route: serve frontend UI or redirect to /docs
     @app.get("/", include_in_schema=False)
     async def root_redirect():
-        from fastapi.responses import RedirectResponse
+        index_file = frontend_dir / "index.html"
+        if index_file.exists():
+            return FileResponse(str(index_file))
         return RedirectResponse(url="/docs")
 
     # Global exception handler
