@@ -67,6 +67,14 @@ class MedicalReportResponse(BaseModel):
         ...,
         description="Whether the document is a valid laboratory report",
     )
+    document_type: Optional[str] = Field(
+        default=None,
+        description="Detected document type (e.g. 'Medical Laboratory Report')",
+    )
+    language: Optional[str] = Field(
+        default=None,
+        description="Language of the document content",
+    )
     patient_info: Optional[PatientInfo] = Field(
         default=None,
         description="Extracted patient information",

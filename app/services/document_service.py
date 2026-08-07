@@ -153,6 +153,8 @@ class DocumentService:
             return MedicalReportResponse(
                 success=True,
                 is_valid_lab_report=False,
+                document_type="Non-Laboratory Document",
+                language="English",
                 patient_info=None,
                 lab_metadata=None,
                 test_results=[],
@@ -196,6 +198,8 @@ class DocumentService:
         response = MedicalReportResponse(
             success=True,
             is_valid_lab_report=True,
+            document_type="Medical Laboratory Report",
+            language="English",
             patient_info=patient_info,
             lab_metadata=lab_metadata,
             test_results=normalized_results,
