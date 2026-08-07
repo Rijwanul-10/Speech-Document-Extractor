@@ -45,3 +45,7 @@ coverage.xml
 *.bin
 *.pt
 *.onnx
+
+# Local Guides (Not for repository commit)
+DOCKER_HUB_GUIDELINE.md
+
