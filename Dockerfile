@@ -33,7 +33,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app/ /app/app/
 COPY Celloscope_Final_Project_Design_Specification.md /app/
 COPY SYSTEM_ARCHITECTURE.md /app/
-COPY README.md /app/ 2>/dev/null || true
+COPY README.md /app/
 
 # Default environment variables for container (Mock providers by default)
 ENV SPEECH_PROVIDER=mock \
