@@ -25,7 +25,7 @@ An production-inspired AI backend service built with **FastAPI**, exposing two i
 Run the complete service locally with Docker Compose:
 
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
 
 The service will be available at:

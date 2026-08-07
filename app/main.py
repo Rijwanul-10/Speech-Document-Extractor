@@ -86,6 +86,12 @@ def create_app() -> FastAPI:
     app.include_router(speech_router)
     app.include_router(document_router)
 
+    # Root route redirect to docs
+    @app.get("/", include_in_schema=False)
+    async def root_redirect():
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url="/docs")
+
     # Global exception handler
     @app.exception_handler(Exception)
     async def global_exception_handler(request: Request, exc: Exception):
