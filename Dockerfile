@@ -29,8 +29,9 @@ COPY requirements.txt .
 # Install Python packages
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application source code
+# Copy application source code and frontend
 COPY app/ /app/app/
+COPY frontend/ /app/frontend/
 COPY Celloscope_Final_Project_Design_Specification.md /app/
 COPY SYSTEM_ARCHITECTURE.md /app/
 COPY README.md /app/
