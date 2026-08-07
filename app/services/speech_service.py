@@ -22,6 +22,40 @@ from app.utils.file_validator import FileValidator, FileValidationError
 
 logger = logging.getLogger(__name__)
 
+# ISO 639-1 → Human-readable language names (Whisper detection output)
+_LANGUAGE_NAMES: dict[str, str] = {
+    "en": "English",
+    "bn": "বাংলা (Bangla)",
+    "hi": "हिन्दी (Hindi)",
+    "es": "Español (Spanish)",
+    "fr": "Français (French)",
+    "de": "Deutsch (German)",
+    "zh": "中文 (Chinese)",
+    "ja": "日本語 (Japanese)",
+    "ko": "한국어 (Korean)",
+    "ar": "العربية (Arabic)",
+    "pt": "Português (Portuguese)",
+    "ru": "Русский (Russian)",
+    "it": "Italiano (Italian)",
+    "nl": "Nederlands (Dutch)",
+    "tr": "Türkçe (Turkish)",
+    "pl": "Polski (Polish)",
+    "sv": "Svenska (Swedish)",
+    "da": "Dansk (Danish)",
+    "no": "Norsk (Norwegian)",
+    "fi": "Suomi (Finnish)",
+    "uk": "Українська (Ukrainian)",
+    "th": "ไทย (Thai)",
+    "vi": "Tiếng Việt (Vietnamese)",
+    "id": "Bahasa Indonesia",
+    "ms": "Bahasa Melayu (Malay)",
+    "ta": "தமிழ் (Tamil)",
+    "te": "తెలుగు (Telugu)",
+    "ur": "اردو (Urdu)",
+    "fa": "فارسی (Persian)",
+    "he": "עברית (Hebrew)",
+}
+
 
 class SpeechService:
     """
@@ -100,6 +134,8 @@ class SpeechService:
             success=True,
             transcript=result.text,
             language=result.language,
+            detected_language=_LANGUAGE_NAMES.get(result.language, result.language),
+            language_code=result.language,
             language_confidence=result.language_confidence,
             duration_seconds=result.duration_seconds,
             segments=segments,

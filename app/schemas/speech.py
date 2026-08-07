@@ -29,6 +29,14 @@ class SpeechTranscriptionResponse(BaseModel):
     success: bool = Field(default=True, description="Whether transcription succeeded")
     transcript: str = Field(..., description="Full transcription text")
     language: str = Field(..., description="Detected or specified language code")
+    detected_language: Optional[str] = Field(
+        default=None,
+        description="Human-readable detected language name (e.g. 'English', 'বাংলা')",
+    )
+    language_code: Optional[str] = Field(
+        default=None,
+        description="ISO 639-1 language code (e.g. 'en', 'bn')",
+    )
     language_confidence: Optional[float] = Field(
         default=None,
         description="Language detection confidence (0.0 - 1.0)",
