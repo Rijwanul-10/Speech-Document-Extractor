@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AI-powered Speech Transcription and Medical Laboratory Report Extraction Service">
+    <title>Speech &amp; Document Extractor — AI Service</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- ─── Loading Overlay ─── -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+        <div class="loading-spinner">
+            <div class="spinner-ring"></div>
+            <p class="loading-text">Processing...</p>
+        </div>
+    </div>
+
+    <!-- ─── Toast Container ─── -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- ─── Header ─── -->
+    <header class="app-header">
+        <div class="header-content">
+            <div class="logo-group">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                        <path d="M2 17l10 5 10-5"/>
+                        <path d="M2 12l10 5 10-5"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="app-title">Speech &amp; Document Extractor</h1>
+                    <p class="app-subtitle">AI-Powered Analysis Service</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <div id="provider-badge" class="provider-badge">
+                    <span class="badge-dot"></span>
+                    <span id="provider-text">Loading...</span>
+                </div>
+                <a href="/docs" target="_blank" class="api-docs-link" title="API Documentation">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                        <polyline points="10 9 9 9 8 9"/>
+                    </svg>
+                    API Docs
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- ─── Navigation Tabs ─── -->
+    <nav class="nav-tabs">
+        <div class="nav-tabs-inner">
+            <button id="tab-speech" class="nav-tab active" data-tab="speech">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                    <line x1="12" y1="19" x2="12" y2="23"/>
+                    <line x1="8" y1="23" x2="16" y2="23"/>
+                </svg>
+                Speech Transcription
+            </button>
+            <button id="tab-document" class="nav-tab" data-tab="document">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <polyline points="10 9 9 9 8 9"/>
+                </svg>
+                Lab Report Extraction
+            </button>
+        </div>
+    </nav>
+
+    <!-- ─── Main Content ─── -->
+    <main class="main-content">
+
+        <!-- ═══════ SPEECH MODULE ═══════ -->
+        <section id="section-speech" class="module-section active">
+            <div class="module-grid">
+
+                <!-- Upload Panel -->
+                <div class="panel upload-panel">
+                    <div class="panel-header">
+                        <h2>Input Source</h2>
+                    </div>
+
+                    <!-- Input Mode Toggle -->
+                    <div class="input-mode-toggle">
+                        <button id="mode-upload" class="mode-btn active" data-mode="upload">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                            Upload File
+                        </button>
+                        <button id="mode-mic" class="mode-btn" data-mode="mic">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                                <line x1="12" y1="19" x2="12" y2="23"/>
+                                <line x1="8" y1="23" x2="16" y2="23"/>
+                            </svg>
+                            Live Microphone
+                        </button>
+                    </div>
+
+                    <!-- File Upload Area -->
+                    <div id="speech-upload-area" class="upload-area">
+                        <div id="speech-dropzone" class="dropzone">
+                            <div class="dropzone-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                    <polyline points="17 8 12 3 7 8"/>
+                                    <line x1="12" y1="3" x2="12" y2="15"/>
+                                </svg>
+                            </div>
+                            <p class="dropzone-title">Drop audio file here</p>
+                            <p class="dropzone-subtitle">or click to browse</p>
+                            <p class="dropzone-formats">WAV · MP3 · FLAC · OGG · M4A · WebM</p>
+                            <input type="file" id="speech-file-input" accept=".wav,.mp3,.flac,.ogg,.m4a,.wma,.aac,.webm" hidden>
+                        </div>
+                        <div id="speech-file-info" class="file-info hidden">
+                            <div class="file-info-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                                    <path d="M9 18V5l12-2v13"/>
+                                    <circle cx="6" cy="18" r="3"/>
+                                    <circle cx="18" cy="16" r="3"/>
+                                </svg>
+                            </div>
+                            <div class="file-info-details">
+                                <p id="speech-file-name" class="file-name"></p>
+                                <p id="speech-file-size" class="file-size"></p>
+                            </div>
+                            <button id="speech-file-remove" class="file-remove-btn" title="Remove file">✕</button>
+                        </div>
+
+                        <!-- Language Hint -->
+                        <div class="language-hint-group">
+                            <label for="speech-language">Language Hint (optional)</label>
+                            <select id="speech-language" class="select-input">
+                                <option value="">Auto-detect</option>
+                                <option value="en">English</option>
+                                <option value="bn">বাংলা (Bangla)</option>
+                            </select>
+                        </div>
+
+                        <button id="speech-submit-btn" class="submit-btn" disabled>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                                <polygon points="5 3 19 12 5 21 5 3"/>
+                            </svg>
+                            Transcribe Audio
+                        </button>
+                    </div>
+
+                    <!-- Microphone Area -->
+                    <div id="speech-mic-area" class="mic-area hidden">
+                        <div class="mic-visual">
+                            <div id="mic-ring-1" class="mic-ring"></div>
+                            <div id="mic-ring-2" class="mic-ring"></div>
+                            <div id="mic-ring-3" class="mic-ring"></div>
+                            <button id="mic-btn" class="mic-btn">
+                                <svg id="mic-icon-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="32" height="32">
+                                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                                    <line x1="12" y1="19" x2="12" y2="23"/>
+                                    <line x1="8" y1="23" x2="16" y2="23"/>
+                                </svg>
+                                <svg id="mic-icon-off" class="hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="32" height="32">
+                                    <rect x="6" y="6" width="12" height="12" rx="2"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <p id="mic-status" class="mic-status">Click to start recording</p>
+                        <p id="mic-timer" class="mic-timer hidden">00:00</p>
+
+                        <!-- Language Hint for mic -->
+                        <div class="language-hint-group">
+                            <label for="mic-language">Language Hint (optional)</label>
+                            <select id="mic-language" class="select-input">
+                                <option value="">Auto-detect</option>
+                                <option value="en">English</option>
+                                <option value="bn">বাংলা (Bangla)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Result Panel -->
+                <div class="panel result-panel">
+                    <div class="panel-header">
+                        <h2>Transcription Result</h2>
+                    </div>
+
+                    <div id="speech-result-placeholder" class="result-placeholder">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" width="64" height="64">
+                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                            <line x1="12" y1="19" x2="12" y2="23"/>
+                            <line x1="8" y1="23" x2="16" y2="23"/>
+                        </svg>
+                        <p>Upload an audio file or use the microphone to see transcription results here.</p>
+                    </div>
+
+                    <div id="speech-result-content" class="result-content hidden">
+                        <!-- Language Badge -->
+                        <div id="speech-lang-badge" class="lang-badge">
+                            <span class="lang-badge-icon">✓</span>
+                            <span class="lang-badge-label">Language Detected</span>
+                            <span id="speech-lang-name" class="lang-badge-value"></span>
+                        </div>
+
+                        <!-- Transcript -->
+                        <div class="result-section">
+                            <h3>Transcript</h3>
+                            <div id="speech-transcript" class="transcript-box"></div>
+                        </div>
+
+                        <!-- Metadata Row -->
+                        <div class="metadata-row">
+                            <div class="metadata-item">
+                                <span class="metadata-label">Duration</span>
+                                <span id="speech-duration" class="metadata-value">—</span>
+                            </div>
+                            <div class="metadata-item">
+                                <span class="metadata-label">Confidence</span>
+                                <span id="speech-confidence" class="metadata-value">—</span>
+                            </div>
+                            <div class="metadata-item">
+                                <span class="metadata-label">Provider</span>
+                                <span id="speech-provider" class="metadata-value">—</span>
+                            </div>
+                        </div>
+
+                        <!-- Segments Accordion -->
+                        <details class="accordion">
+                            <summary class="accordion-header">
+                                <span>Timed Segments</span>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" class="accordion-chevron">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </summary>
+                            <div id="speech-segments" class="accordion-body"></div>
+                        </details>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══════ DOCUMENT MODULE ═══════ -->
+        <section id="section-document" class="module-section">
+            <div class="module-grid">
+
+                <!-- Upload Panel -->
+                <div class="panel upload-panel">
+                    <div class="panel-header">
+                        <h2>Upload Report</h2>
+                    </div>
+
+                    <div id="doc-dropzone" class="dropzone">
+                        <div class="dropzone-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                            </svg>
+                        </div>
+                        <p class="dropzone-title">Drop report file here</p>
+                        <p class="dropzone-subtitle">or click to browse</p>
+                        <p class="dropzone-formats">JPG · PNG · JPEG · PDF</p>
+                        <input type="file" id="doc-file-input" accept=".jpg,.jpeg,.png,.bmp,.tiff,.tif,.webp,.pdf" hidden>
+                    </div>
+
+                    <div id="doc-file-info" class="file-info hidden">
+                        <div class="file-info-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                            </svg>
+                        </div>
+                        <div class="file-info-details">
+                            <p id="doc-file-name" class="file-name"></p>
+                            <p id="doc-file-size" class="file-size"></p>
+                        </div>
+                        <button id="doc-file-remove" class="file-remove-btn" title="Remove file">✕</button>
+                    </div>
+
+                    <button id="doc-submit-btn" class="submit-btn" disabled>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                        </svg>
+                        Extract Report
+                    </button>
+                </div>
+
+                <!-- Result Panel -->
+                <div class="panel result-panel">
+                    <div class="panel-header">
+                        <h2>Extraction Result</h2>
+                    </div>
+
+                    <div id="doc-result-placeholder" class="result-placeholder">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" width="64" height="64">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                        </svg>
+                        <p>Upload a medical laboratory report image or PDF to see extracted results here.</p>
+                    </div>
+
+                    <div id="doc-result-content" class="result-content hidden">
+                        <!-- Document Type Badge -->
+                        <div id="doc-type-badge" class="lang-badge">
+                            <span class="lang-badge-icon">✓</span>
+                            <span id="doc-type-label" class="lang-badge-label">Document Type</span>
+                            <span id="doc-type-value" class="lang-badge-value"></span>
+                        </div>
+
+                        <!-- Invalid Report Warning -->
+                        <div id="doc-invalid-warning" class="invalid-warning hidden">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="15" y1="9" x2="9" y2="15"/>
+                                <line x1="9" y1="9" x2="15" y2="15"/>
+                            </svg>
+                            <div>
+                                <p class="invalid-title">Invalid Laboratory Report</p>
+                                <p class="invalid-subtitle">The uploaded document was not recognized as a laboratory report. Please upload a valid medical laboratory report.</p>
+                            </div>
+                        </div>
+
+                        <!-- Patient & Lab Info Cards -->
+                        <div id="doc-metadata-section" class="metadata-cards">
+                            <div class="metadata-card">
+                                <h3>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                        <circle cx="12" cy="7" r="4"/>
+                                    </svg>
+                                    Patient Information
+                                </h3>
+                                <div class="card-grid">
+                                    <div class="card-field">
+                                        <span class="card-label">Name</span>
+                                        <span id="patient-name" class="card-value">—</span>
+                                    </div>
+                                    <div class="card-field">
+                                        <span class="card-label">Age</span>
+                                        <span id="patient-age" class="card-value">—</span>
+                                    </div>
+                                    <div class="card-field">
+                                        <span class="card-label">Sex</span>
+                                        <span id="patient-sex" class="card-value">—</span>
+                                    </div>
+                                    <div class="card-field">
+                                        <span class="card-label">Patient ID</span>
+                                        <span id="patient-id" class="card-value">—</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="metadata-card">
+                                <h3>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                                        <polyline points="9 22 9 12 15 12 15 22"/>
+                                    </svg>
+                                    Laboratory Details
+                                </h3>
+                                <div class="card-grid">
+                                    <div class="card-field">
+                                        <span class="card-label">Laboratory</span>
+                                        <span id="lab-name" class="card-value">—</span>
+                                    </div>
+                                    <div class="card-field">
+                                        <span class="card-label">Report Date</span>
+                                        <span id="lab-date" class="card-value">—</span>
+                                    </div>
+                                    <div class="card-field">
+                                        <span class="card-label">Ref. Number</span>
+                                        <span id="lab-ref" class="card-value">—</span>
+                                    </div>
+                                    <div class="card-field">
+                                        <span class="card-label">Doctor</span>
+                                        <span id="lab-doctor" class="card-value">—</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Test Results Table -->
+                        <div id="doc-results-section" class="results-table-section">
+                            <h3>Test Results</h3>
+                            <div class="table-wrapper">
+                                <table id="doc-results-table" class="results-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Test</th>
+                                            <th>Value</th>
+                                            <th>Unit</th>
+                                            <th>Reference Range</th>
+                                            <th>Flag</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="doc-results-tbody">
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div id="doc-no-results" class="no-results hidden">
+                                <p>Valid Laboratory Report — No laboratory test results were detected.</p>
+                            </div>
+                        </div>
+
+                        <!-- Provider Info -->
+                        <div class="metadata-row">
+                            <div class="metadata-item">
+                                <span class="metadata-label">Pages</span>
+                                <span id="doc-pages" class="metadata-value">—</span>
+                            </div>
+                            <div class="metadata-item">
+                                <span class="metadata-label">Language</span>
+                                <span id="doc-language" class="metadata-value">—</span>
+                            </div>
+                            <div class="metadata-item">
+                                <span class="metadata-label">Provider</span>
+                                <span id="doc-provider" class="metadata-value">—</span>
+                            </div>
+                        </div>
+
+                        <!-- Raw OCR Accordion -->
+                        <details class="accordion">
+                            <summary class="accordion-header">
+                                <span>Raw OCR Output</span>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" class="accordion-chevron">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </summary>
+                            <div id="doc-raw-ocr" class="accordion-body raw-ocr-body"></div>
+                        </details>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ─── Footer ─── -->
+    <footer class="app-footer">
+        <p>Speech &amp; Document Extractor · Built for Celloscope AI/ML Take-Home Assignment</p>
+    </footer>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
