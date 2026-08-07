@@ -20,16 +20,30 @@ An production-inspired AI backend service built with **FastAPI**, exposing two i
 
 ---
 
+## 🎨 Interactive Web Frontend
+
+The service includes a modern, responsive single-page web UI served directly at the root URL (`http://localhost:8000/`):
+- **Speech Module**: Supports audio file drag-and-drop upload and **Live Microphone streaming via WebSockets**. Displays full transcripts, automatic detected language badges (Whisper detection), duration, confidence, and timed segments.
+- **Medical Lab Report Module**: Supports image and multi-page PDF uploads. Displays patient information, lab metadata, structured test result tables (with High/Low/Normal flags), handles invalid/empty reports gracefully, and offers expandable raw OCR line output.
+
+---
+
 ## 🚀 Quick Start (Docker)
 
-Run the complete service locally with Docker Compose:
+Run the service locally with Docker Compose (Mock Mode by default for instant evaluation):
 
 ```bash
 docker compose up --build
 ```
 
+To run with **real AI models** (Whisper for speech & PaddleOCR for document extraction):
+
+```bash
+docker compose -f docker-compose.real.yml up --build
+```
+
 The service will be available at:
-- **API Base URL**: `http://localhost:8000`
+- **Web App (UI)**: `http://localhost:8000/`
 - **Interactive Swagger Docs**: `http://localhost:8000/docs`
 - **ReDoc Documentation**: `http://localhost:8000/redoc`
 - **Health Check**: `http://localhost:8000/api/v1/health`
