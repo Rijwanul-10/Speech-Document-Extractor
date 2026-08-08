@@ -23,12 +23,19 @@ class ImageEnhancer:
     brightness/contrast adjustment, and sharpening.
     """
 
-    def enhance(self, image_bytes: bytes) -> bytes:
+    def enhance(
+        self,
+        image_bytes: bytes,
+        binarize: bool = False,
+        sharpen: bool = False,
+    ) -> bytes:
         """
         Apply the full enhancement pipeline to an image.
 
         Args:
             image_bytes: Raw image bytes (JPEG, PNG, etc.).
+            binarize: Whether to apply adaptive binarization (default False).
+            sharpen: Whether to apply edge sharpening (default False).
 
         Returns:
             Enhanced image as PNG bytes.
@@ -53,11 +60,13 @@ class ImageEnhancer:
         # Step 4: Brightness and contrast enhancement
         gray = self._adjust_brightness_contrast(gray)
 
-        # Step 5: Sharpening
-        gray = self._sharpen(gray)
+        # Step 5: Sharpening (optional)
+        if sharpen:
+            gray = self._sharpen(gray)
 
-        # Step 6: Binarization (adaptive threshold for cleaner OCR)
-        gray = self._binarize(gray)
+        # Step 6: Binarization (optional adaptive threshold)
+        if binarize:
+            gray = self._binarize(gray)
 
         # Encode back to PNG bytes
         success, encoded = cv2.imencode(".png", gray)

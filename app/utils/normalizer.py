@@ -81,13 +81,34 @@ _UNIT_MAPPINGS = {
 }
 
 
+_TEST_NAME_CORRECTIONS = {
+    "he moglobin": "Hemoglobin",
+    "hemoglobn": "Hemoglobin",
+    "hb": "Hemoglobin",
+    "wec count": "WBC Count",
+    "wbc": "WBC Count",
+    "platlet count": "Platelet Count",
+    "plateletcount": "Platelet Count",
+}
+
+
 class ValueNormalizer:
     """
     Normalizes extracted lab report values.
 
     Handles unit standardization, numeric value cleaning,
-    and date format normalization.
+    date format normalization, and test name cleaning.
     """
+
+    def normalize_test_name(self, test_name: Optional[str]) -> Optional[str]:
+        """Normalize test names to correct OCR misreadings."""
+        if not test_name:
+            return None
+        cleaned = test_name.strip()
+        lower_name = cleaned.lower()
+        if lower_name in _TEST_NAME_CORRECTIONS:
+            return _TEST_NAME_CORRECTIONS[lower_name]
+        return cleaned
 
     def normalize_unit(self, unit: Optional[str]) -> Optional[str]:
         """

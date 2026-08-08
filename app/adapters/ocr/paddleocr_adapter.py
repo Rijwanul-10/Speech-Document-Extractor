@@ -82,17 +82,7 @@ class PaddleOCRAdapter(IOCRProvider):
 
             lines = []
             if result and result[0]:
-                for res in result[0]:
-                    bbox = res[0]
-                    text, confidence = res[1]
-
-                    lines.append(
-                        OCRLine(
-                            text=text.strip(),
-                            confidence=float(confidence),
-                            bbox=bbox,
-                        )
-                    )
+                lines = self._reconstruct_rows(result[0])
 
             full_text = "\n".join([line.text for line in lines])
 
@@ -106,3 +96,77 @@ class PaddleOCRAdapter(IOCRProvider):
         except Exception as e:
             logger.error(f"Error during PaddleOCR processing: {e}")
             raise RuntimeError(f"PaddleOCR processing failed: {e}")
+
+    def _reconstruct_rows(self, raw_items: list) -> list[OCRLine]:
+        """
+        Group individual text detection bounding boxes into spatially
+        reconstructed horizontal rows based on Y-center coordinates.
+        """
+        if not raw_items:
+            return []
+
+        parsed_boxes = []
+        for res in raw_items:
+            if not res or len(res) < 2:
+                continue
+            bbox = res[0]
+            text, confidence = res[1]
+            text_str = str(text).strip() if text else ""
+            if not text_str:
+                continue
+
+            y_coords = [p[1] for p in bbox]
+            x_coords = [p[0] for p in bbox]
+            y_center = sum(y_coords) / len(y_coords)
+            x_center = sum(x_coords) / len(x_coords)
+            height = max(y_coords) - min(y_coords)
+
+            parsed_boxes.append({
+                "text": text_str,
+                "confidence": float(confidence) if confidence is not None else 0.0,
+                "bbox": bbox,
+                "x_center": x_center,
+                "y_center": y_center,
+                "height": max(height, 10.0),
+            })
+
+        if not parsed_boxes:
+            return []
+
+        # Sort by y_center top-to-bottom
+        parsed_boxes.sort(key=lambda b: b["y_center"])
+
+        # Group boxes into horizontal rows
+        rows: list[list[dict]] = []
+        for box in parsed_boxes:
+            matched_row = None
+            for row in rows:
+                row_y_center = sum(b["y_center"] for b in row) / len(row)
+                avg_height = sum(b["height"] for b in row) / len(row)
+                threshold = max(avg_height * 0.6, 12.0)
+                if abs(box["y_center"] - row_y_center) <= threshold:
+                    matched_row = row
+                    break
+
+            if matched_row is not None:
+                matched_row.append(box)
+            else:
+                rows.append([box])
+
+        # For each row, sort left-to-right by x_center and join text
+        ocr_lines = []
+        for row in rows:
+            row.sort(key=lambda b: b["x_center"])
+            row_text = "  ".join(b["text"] for b in row)
+            avg_conf = sum(b["confidence"] for b in row) / len(row)
+
+            ocr_lines.append(
+                OCRLine(
+                    text=row_text,
+                    confidence=avg_conf,
+                    bbox=row[0]["bbox"] if len(row) == 1 else None,
+                )
+            )
+
+        return ocr_lines
+

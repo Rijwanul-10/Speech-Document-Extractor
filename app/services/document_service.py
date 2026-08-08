@@ -167,6 +167,7 @@ class DocumentService:
         # Step 9: Normalize values and build TestResult objects
         normalized_results = []
         for raw_result in all_test_results:
+            normalized_name = self._normalizer.normalize_test_name(raw_result.get("test_name")) or raw_result["test_name"]
             normalized_value = self._normalizer.normalize_numeric(raw_result.get("value"))
             normalized_unit = self._normalizer.normalize_unit(raw_result.get("unit"))
             normalized_range = self._normalizer.normalize_reference_range(
@@ -176,7 +177,7 @@ class DocumentService:
 
             normalized_results.append(
                 TestResult(
-                    test_name=raw_result["test_name"],
+                    test_name=normalized_name,
                     value=normalized_value,
                     unit=normalized_unit,
                     reference_range=normalized_range,
