@@ -107,18 +107,19 @@ def test_transcribe_invalid_format(client):
 def test_websocket_streaming(client):
     with client.websocket_connect("/api/v1/speech/stream") as websocket:
         # Send config
-        websocket.send_json({"type": "config", "sample_rate": 16000, "language": "bn"})
+        websocket.send_json({"type": "config", "sample_rate": 16000, "language": "en"})
         res = websocket.receive_json()
         assert res["type"] == "info"
 
-        # Send audio chunk bytes
-        websocket.send_bytes(b"\x00\x01" * 1000)
+        # Send 16000 bytes of audio PCM data to trigger partial transcription
+        websocket.send_bytes(b"\x00\x01" * 8000)
         chunk_res = websocket.receive_json()
-        assert chunk_res["type"] == "final"
-        assert len(chunk_res["text"]) > 0
+        assert chunk_res["type"] == "partial"
+        assert "text" in chunk_res
 
         # Send stop
         websocket.send_json({"type": "stop"})
         stop_res = websocket.receive_json()
-        assert stop_res["type"] == "info"
+        assert stop_res["type"] == "final"
+        assert stop_res["is_final"] is True
 

@@ -87,7 +87,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedSpeechFile = null;
     let selectedDocFile = null;
     let isRecording = false;
-    let mediaRecorder = null;
+    let audioContext = null;
+    let scriptProcessor = null;
+    let mediaStreamSource = null;
+    let audioStream = null;
     let websocket = null;
     let timerInterval = null;
     let recordingSeconds = 0;
@@ -284,7 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function startRecording() {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
             
             // Connect WebSocket
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -311,17 +314,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 speechProvider.textContent = 'WebSocket Stream';
                 speechSegments.innerHTML = '';
 
-                // Start recording media stream
-                mediaRecorder = new MediaRecorder(stream);
-                mediaRecorder.ondataavailable = (event) => {
-                    if (event.data.size > 0 && websocket && websocket.readyState === WebSocket.OPEN) {
-                        event.data.arrayBuffer().then(buffer => {
-                            websocket.send(buffer);
-                        });
+                // Setup Web Audio API PCM capture (16kHz 16-bit Mono PCM)
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                audioContext = new AudioCtx({ sampleRate: 16000 });
+                mediaStreamSource = audioContext.createMediaStreamSource(audioStream);
+                scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
+
+                scriptProcessor.onaudioprocess = (e) => {
+                    if (!isRecording || !websocket || websocket.readyState !== WebSocket.OPEN) return;
+                    const inputData = e.inputBuffer.getChannelData(0);
+                    
+                    // Convert Float32 [-1.0, 1.0] to Int16 PCM bytes
+                    const pcm16 = new Int16Array(inputData.length);
+                    for (let i = 0; i < inputData.length; i++) {
+                        const s = Math.max(-1, Math.min(1, inputData[i]));
+                        pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
                     }
+                    
+                    websocket.send(pcm16.buffer);
                 };
 
-                mediaRecorder.start(1000); // 1-second chunks
+                mediaStreamSource.connect(scriptProcessor);
+                scriptProcessor.connect(audioContext.destination);
+
                 isRecording = true;
                 updateMicUI(true);
                 startTimer();
@@ -330,13 +345,16 @@ document.addEventListener('DOMContentLoaded', () => {
             websocket.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
-                    if (data.type === 'final' || data.text) {
+                    if (data.text) {
                         if (speechTranscript.textContent === 'Listening to live audio...') {
                             speechTranscript.textContent = '';
                         }
-                        speechTranscript.textContent += (speechTranscript.textContent ? ' ' : '') + data.text;
+                        speechTranscript.textContent = data.text;
                         if (data.language) {
                             speechLangName.textContent = data.language;
+                        }
+                        if (data.confidence) {
+                            speechConfidence.textContent = `${Math.round(data.confidence * 100)}%`;
                         }
                     }
                 } catch (e) {
@@ -364,14 +382,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function stopRecording() {
         isRecording = false;
-        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-            mediaRecorder.stop();
-            mediaRecorder.stream.getTracks().forEach(track => track.stop());
+
+        if (scriptProcessor) {
+            scriptProcessor.disconnect();
+            scriptProcessor = null;
         }
+        if (mediaStreamSource) {
+            mediaStreamSource.disconnect();
+            mediaStreamSource = null;
+        }
+        if (audioContext && audioContext.state !== 'closed') {
+            audioContext.close();
+            audioContext = null;
+        }
+        if (audioStream) {
+            audioStream.getTracks().forEach(track => track.stop());
+            audioStream = null;
+        }
+
         if (websocket && websocket.readyState === WebSocket.OPEN) {
             websocket.send(JSON.stringify({ type: 'stop' }));
             websocket.close();
         }
+
         updateMicUI(false);
         stopTimer();
         showToast('Microphone recording stopped');

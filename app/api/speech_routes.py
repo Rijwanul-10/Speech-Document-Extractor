@@ -6,8 +6,10 @@ Provides REST and WebSocket endpoints for speech transcription:
 - WebSocket /api/v1/speech/stream — Live microphone transcription
 """
 
+import io
 import json
 import logging
+import wave
 from typing import Optional
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
@@ -170,6 +172,17 @@ async def transcribe_audio_json(
         )
 
 
+def _pcm_to_wav(pcm_bytes: bytes, sample_rate: int = 16000) -> bytes:
+    """Convert raw 16-bit Mono PCM bytes into a valid in-memory WAV file."""
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)  # 16-bit
+        wf.setframerate(sample_rate)
+        wf.writeframes(pcm_bytes)
+    return buf.getvalue()
+
+
 @router.websocket("/stream")
 async def stream_transcription(websocket: WebSocket):
     """
@@ -179,10 +192,11 @@ async def stream_transcription(websocket: WebSocket):
     1. Client connects to ws://host/api/v1/speech/stream
     2. Client sends a JSON config message:
        {"type": "config", "sample_rate": 16000, "language": "bn"}
-    3. Client sends raw PCM audio chunks as binary messages
-    4. Server responds with JSON transcription chunks:
-       {"type": "final", "text": "...", "language": "bn", "confidence": 0.95}
-    5. Client sends {"type": "stop"} to end the session
+    3. Client streams 16-bit PCM audio chunks (or WAV/Ogg chunks) as binary WebSocket messages
+    4. Server responds with JSON transcription updates:
+       {"type": "partial", "text": "...", "language": "bn", "is_final": false}
+    5. Client sends {"type": "stop"} to finalize the session:
+       {"type": "final", "text": "...", "language": "bn", "is_final": true}
     """
     await websocket.accept()
     logger.info("WebSocket connection accepted for speech streaming")
@@ -190,6 +204,7 @@ async def stream_transcription(websocket: WebSocket):
     service = _get_service()
     sample_rate = 16000
     language = None
+    session_audio_buffer = bytearray()
 
     try:
         while True:
@@ -204,6 +219,7 @@ async def stream_transcription(websocket: WebSocket):
                     if msg_type == "config":
                         sample_rate = data.get("sample_rate", 16000)
                         language = data.get("language")
+                        session_audio_buffer.clear()
                         await websocket.send_json({
                             "type": "info",
                             "text": f"Configured: sample_rate={sample_rate}, language={language or 'auto'}",
@@ -212,11 +228,38 @@ async def stream_transcription(websocket: WebSocket):
                         logger.info(f"WebSocket configured: rate={sample_rate}, lang={language}")
 
                     elif msg_type == "stop":
-                        await websocket.send_json({
-                            "type": "info",
-                            "text": "Session ended",
-                            "is_final": True,
-                        })
+                        if len(session_audio_buffer) > 0:
+                            if session_audio_buffer[:4] in (b"RIFF", b"OggS", b"\xff\xfb", b"fLaC"):
+                                audio_bytes = bytes(session_audio_buffer)
+                            else:
+                                audio_bytes = _pcm_to_wav(bytes(session_audio_buffer), sample_rate=sample_rate)
+
+                            try:
+                                result = await service.transcribe_file(
+                                    file_bytes=audio_bytes,
+                                    filename="stream.wav",
+                                    language=language,
+                                )
+                                await websocket.send_json({
+                                    "type": "final",
+                                    "text": result.transcript,
+                                    "language": result.language,
+                                    "confidence": result.language_confidence,
+                                    "is_final": True,
+                                })
+                            except Exception as e:
+                                logger.error(f"Final transcription error: {e}")
+                                await websocket.send_json({
+                                    "type": "final",
+                                    "text": "",
+                                    "is_final": True,
+                                })
+                        else:
+                            await websocket.send_json({
+                                "type": "final",
+                                "text": "",
+                                "is_final": True,
+                            })
                         logger.info("WebSocket session ended by client")
                         break
 
@@ -234,13 +277,30 @@ async def stream_transcription(websocket: WebSocket):
                 if len(audio_chunk) == 0:
                     continue
 
-                chunk_result = await service.transcribe_stream_chunk(
-                    audio_chunk=audio_chunk,
-                    sample_rate=sample_rate,
-                    language=language,
-                )
+                session_audio_buffer.extend(audio_chunk)
 
-                await websocket.send_json(chunk_result.model_dump(mode="json"))
+                # Process partial transcription when buffer has accumulated enough audio (~0.5s = 16000 bytes)
+                if len(session_audio_buffer) >= 16000:
+                    if session_audio_buffer[:4] in (b"RIFF", b"OggS", b"\xff\xfb", b"fLaC"):
+                        audio_bytes = bytes(session_audio_buffer)
+                    else:
+                        audio_bytes = _pcm_to_wav(bytes(session_audio_buffer), sample_rate=sample_rate)
+
+                    try:
+                        result = await service.transcribe_file(
+                            file_bytes=audio_bytes,
+                            filename="stream.wav",
+                            language=language,
+                        )
+                        await websocket.send_json({
+                            "type": "partial",
+                            "text": result.transcript,
+                            "language": result.language,
+                            "confidence": result.language_confidence,
+                            "is_final": False,
+                        })
+                    except Exception as e:
+                        logger.warning(f"Streaming partial transcription error: {e}")
 
     except WebSocketDisconnect:
         logger.info("WebSocket client disconnected")
