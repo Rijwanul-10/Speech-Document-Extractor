@@ -13,7 +13,7 @@ from typing import Optional
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 
 from app.schemas.common import ErrorResponse
-from app.schemas.speech import SpeechTranscriptionResponse
+from app.schemas.speech import SpeechTranscriptionRequest, SpeechTranscriptionResponse
 from app.services.speech_service import SpeechService
 from app.utils.file_validator import FileValidationError
 
@@ -102,6 +102,70 @@ async def transcribe_audio(
                 "success": False,
                 "error_code": "INTERNAL_ERROR",
                 "message": "An unexpected error occurred during transcription.",
+            },
+        )
+
+
+@router.post(
+    "/transcribe-json",
+    response_model=SpeechTranscriptionResponse,
+    responses={
+        400: {"model": ErrorResponse, "description": "Validation error"},
+        500: {"model": ErrorResponse, "description": "Internal server error"},
+    },
+    summary="Transcribe Audio from Base64 JSON",
+    description=(
+        "Send a JSON payload containing base64-encoded audio for transcription. "
+        "Supports WAV, MP3, FLAC, OGG, M4A, WMA, AAC, and WebM formats. "
+        "Returns the complete detailed transcription response in JSON format."
+    ),
+)
+async def transcribe_audio_json(
+    body: SpeechTranscriptionRequest,
+) -> SpeechTranscriptionResponse:
+    """
+    Transcribe audio from a base64-encoded JSON payload.
+
+    Provides direct API support for callers operating with raw JSON requests.
+    Returns the exact same detailed output schema as the frontend dashboard.
+    """
+    try:
+        service = _get_service()
+        result = await service.transcribe_base64(
+            audio_base64=body.audio_base64,
+            filename=body.filename or "audio.wav",
+            language=body.language,
+        )
+        return result
+
+    except FileValidationError as e:
+        logger.warning(f"Validation error in JSON transcription: {e.message}")
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "success": False,
+                "error_code": e.error_code,
+                "message": e.message,
+            },
+        )
+    except RuntimeError as e:
+        logger.error(f"Transcription error in JSON transcription: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "success": False,
+                "error_code": "TRANSCRIPTION_ERROR",
+                "message": str(e),
+            },
+        )
+    except Exception as e:
+        logger.exception(f"Unexpected error in JSON speech transcription: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "success": False,
+                "error_code": "INTERNAL_ERROR",
+                "message": "An unexpected error occurred during JSON transcription.",
             },
         )
 

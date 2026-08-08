@@ -11,6 +11,26 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 
+class SpeechTranscriptionRequest(BaseModel):
+    """Request payload for direct JSON base64 speech transcription."""
+
+    audio_base64: str = Field(
+        ...,
+        description="Base64-encoded audio file data",
+        json_schema_extra={"example": "UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA="},
+    )
+    filename: Optional[str] = Field(
+        default="audio.wav",
+        description="Original audio filename with extension (e.g. 'sample.wav')",
+        json_schema_extra={"example": "sample_audio.wav"},
+    )
+    language: Optional[str] = Field(
+        default=None,
+        description="Language hint: 'en' for English, 'bn' for Bengali. Auto-detected if empty or omitted.",
+        json_schema_extra={"example": None},
+    )
+
+
 class TranscriptionSegment(BaseModel):
     """A single transcription segment with timing information."""
 

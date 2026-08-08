@@ -16,6 +16,34 @@ from app.adapters.speech.base import ISpeechProvider, TranscriptResult, Transcri
 logger = logging.getLogger(__name__)
 
 
+_VALID_WHISPER_LANGUAGES: set[str] = {
+    "af", "am", "ar", "as", "az", "ba", "be", "bg", "bn", "bo", "br", "bs", "ca", "cs", "cy", "da", "de",
+    "el", "en", "es", "et", "eu", "fa", "fi", "fo", "fr", "gl", "gu", "ha", "haw", "he", "hi", "hr", "ht",
+    "hu", "hy", "id", "is", "it", "ja", "jw", "ka", "kk", "km", "kn", "ko", "la", "lb", "ln", "lo", "lt",
+    "lv", "mg", "mi", "mk", "ml", "mn", "mr", "ms", "mt", "my", "ne", "nl", "nn", "no", "oc", "pa", "pl",
+    "ps", "pt", "ro", "ru", "sa", "sd", "si", "sk", "sl", "sn", "so", "sq", "sr", "su", "sv", "sw", "ta",
+    "te", "tg", "th", "tk", "tl", "tr", "tt", "uk", "ur", "uz", "vi", "yi", "yo", "zh", "yue",
+}
+
+
+def sanitize_language(language: Optional[str]) -> Optional[str]:
+    """
+    Sanitize and validate language code.
+
+    Converts Swagger/OpenAPI default placeholder strings ('string', 'auto', 'null', 'none')
+    or invalid language strings to None so Whisper performs auto-detection.
+    """
+    if not language:
+        return None
+    cleaned = str(language).strip().lower()
+    if cleaned in ("string", "auto", "none", "null", "undefined", ""):
+        return None
+    if cleaned in _VALID_WHISPER_LANGUAGES:
+        return cleaned
+    logger.warning(f"Unrecognized language code '{language}', falling back to auto-detection.")
+    return None
+
+
 class WhisperAdapter(ISpeechProvider):
     """
     Faster-Whisper implementation of ISpeechProvider.
@@ -89,6 +117,8 @@ class WhisperAdapter(ISpeechProvider):
 
         self._load_model()
 
+        lang = sanitize_language(language)
+
         # Save audio bytes to temporary file for whisper processing
         suffix = f".{filename.split('.')[-1]}" if "." in filename else ".wav"
         with tempfile.NamedTemporaryFile(suffix=suffix, delete=True) as temp_audio:
@@ -98,7 +128,7 @@ class WhisperAdapter(ISpeechProvider):
             try:
                 segments_raw, info = self._model.transcribe(
                     temp_audio.name,
-                    language=language,
+                    language=lang,
                     beam_size=5,
                     best_of=5,
                     vad_filter=True,  # Filter out silence

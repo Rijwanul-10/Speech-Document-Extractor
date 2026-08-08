@@ -8,6 +8,7 @@ This is the service layer — it contains business logic but
 never depends on specific provider implementations.
 """
 
+import base64
 import logging
 from typing import Optional
 
@@ -150,6 +151,50 @@ class SpeechService:
         )
 
         return response
+
+    async def transcribe_base64(
+        self,
+        audio_base64: str,
+        filename: str = "audio.wav",
+        language: Optional[str] = None,
+    ) -> SpeechTranscriptionResponse:
+        """
+        Transcribe audio provided as a base64-encoded string.
+
+        Args:
+            audio_base64: Base64-encoded audio data string.
+            filename: Original filename hint for extension validation.
+            language: Optional language hint ('en', 'bn').
+
+        Returns:
+            SpeechTranscriptionResponse with detailed transcript and metadata.
+
+        Raises:
+            FileValidationError: If base64 decoding or validation fails.
+            RuntimeError: If transcription fails.
+        """
+        if not audio_base64 or not audio_base64.strip():
+            raise FileValidationError("Audio base64 data cannot be empty.", error_code="EMPTY_FILE")
+
+        # Strip optional data URI header (e.g. "data:audio/wav;base64,...")
+        clean_b64 = audio_base64.strip()
+        if "," in clean_b64:
+            clean_b64 = clean_b64.split(",", 1)[1]
+
+        try:
+            audio_bytes = base64.b64decode(clean_b64, validate=True)
+        except Exception as e:
+            logger.warning(f"Invalid base64 encoding: {e}")
+            raise FileValidationError(
+                "Invalid base64 encoding for audio data.",
+                error_code="INVALID_BASE64",
+            )
+
+        return await self.transcribe_file(
+            file_bytes=audio_bytes,
+            filename=filename,
+            language=language,
+        )
 
     async def transcribe_stream_chunk(
         self,
