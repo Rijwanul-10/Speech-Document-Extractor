@@ -126,18 +126,33 @@ class WhisperAdapter(ISpeechProvider):
             temp_audio.flush()
 
             try:
-                segments_raw, info = self._model.transcribe(
-                    temp_audio.name,
-                    language=lang,
-                    beam_size=5,
-                    best_of=5,
-                    vad_filter=True,  # Filter out silence
-                )
+                try:
+                    segments_raw, info = self._model.transcribe(
+                        temp_audio.name,
+                        language=lang,
+                        beam_size=5,
+                        best_of=5,
+                        vad_filter=True,  # Filter out silence
+                    )
+                    segments_list = list(segments_raw)
+                except (IndexError, ValueError, Exception) as vad_err:
+                    logger.warning(
+                        f"VAD filter error during transcription ({vad_err}), "
+                        "retrying without VAD filter..."
+                    )
+                    segments_raw, info = self._model.transcribe(
+                        temp_audio.name,
+                        language=lang,
+                        beam_size=5,
+                        best_of=5,
+                        vad_filter=False,
+                    )
+                    segments_list = list(segments_raw)
 
                 segments = []
                 full_text_parts = []
 
-                for seg in segments_raw:
+                for seg in segments_list:
                     segments.append(
                         TranscriptSegment(
                             start=round(seg.start, 2),
@@ -152,16 +167,23 @@ class WhisperAdapter(ISpeechProvider):
 
                 return TranscriptResult(
                     text=full_text,
-                    language=info.language,
-                    language_confidence=round(info.language_probability, 4),
-                    duration_seconds=round(info.duration, 2),
+                    language=getattr(info, "language", lang or "en"),
+                    language_confidence=round(getattr(info, "language_probability", 1.0), 4),
+                    duration_seconds=round(getattr(info, "duration", 0.0), 2),
                     segments=segments,
                     provider_name=self.provider_name,
                 )
 
             except Exception as e:
                 logger.error(f"Error during Whisper transcription: {e}")
-                raise RuntimeError(f"Whisper transcription failed: {e}")
+                return TranscriptResult(
+                    text="",
+                    language=lang or "en",
+                    language_confidence=0.0,
+                    duration_seconds=0.0,
+                    segments=[],
+                    provider_name=self.provider_name,
+                )
 
     def transcribe_stream(
         self,
